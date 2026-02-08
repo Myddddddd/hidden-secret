@@ -2,6 +2,6 @@
   "name": "Hide <secret> Tag",
   "version": "1.0.0",
   "description": "Hide <secret> content from UI and edit modal without affecting LLM history",
-  "author": "you",
-  "entry": "index.js"
+  "author": "you", 
+  "js": "index.js"
 }

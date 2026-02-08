@@ -1,60 +1,42 @@
-(() => {
+(function () {
   const SECRET_REGEX = /<secret>[\s\S]*?<\/secret>/gi;
-  const PLACEHOLDER = '*[HIDDEN]*';
+  const PLACEHOLDER = '<secret>[HIDDEN]</secret>';
 
-  // Lưu text gốc theo message id
-  const originalMessages = new Map();
-
-  function mask(text) {
-    return text.replace(SECRET_REGEX, PLACEHOLDER);
+  function maskNode(node) {
+    if (!node || node.dataset?.secretMasked) return;
+    node.innerHTML = node.innerHTML.replace(SECRET_REGEX, PLACEHOLDER);
+    node.dataset.secretMasked = 'true';
   }
 
-  function hookEditModal() {
-    const modal = document.querySelector('.edit-message-modal');
-    if (!modal) return;
+  // 1️⃣ Mask khi message render
+  function hookMessages() {
+    document.querySelectorAll('.mes_text').forEach(maskNode);
+  }
 
-    const textarea = modal.querySelector('textarea');
-    const saveBtn = modal.querySelector('button.save');
+  // 2️⃣ Mask khi mở Edit (KHÔNG restore — vì Edit chỉ là UI)
+  function hookEdit() {
+    const textarea = document.querySelector('.edit_textarea');
+    if (!textarea || textarea.dataset.secretMasked) return;
 
-    if (!textarea || textarea.dataset.secretHooked) return;
+    textarea.value = textarea.value.replace(SECRET_REGEX, PLACEHOLDER);
+    textarea.dataset.secretMasked = 'true';
+  }
 
-    const messageId = modal.dataset.messageId || Date.now();
+  // 3️⃣ Observer NHẸ
+  const observer = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType !== 1) continue;
 
-    // Backup text gốc
-    originalMessages.set(messageId, textarea.value);
+        if (node.classList?.contains('mes_text')) {
+          maskNode(node);
+        }
 
-    // Mask cho UI
-    textarea.value = mask(textarea.value);
-    textarea.dataset.secretHooked = 'true';
-
-    // Khi bấm Save → restore nội dung gốc
-    if (saveBtn) {
-      saveBtn.addEventListener(
-        'click',
-        () => {
-          const original = originalMessages.get(messageId);
-          if (original) {
-            textarea.value = original;
-            originalMessages.delete(messageId);
-          }
-        },
-        { once: true }
-      );
+        if (node.classList?.contains('edit_textarea')) {
+          hookEdit();
+        }
+      }
     }
-  }
-
-  function hookRenderedMessages() {
-    document.querySelectorAll('.mes_text').forEach(el => {
-      if (el.dataset.secretMasked) return;
-      el.innerHTML = mask(el.innerHTML);
-      el.dataset.secretMasked = 'true';
-    });
-  }
-
-  // Quan sát DOM
-  const observer = new MutationObserver(() => {
-    hookRenderedMessages();
-    hookEditModal();
   });
 
   observer.observe(document.body, {
@@ -62,5 +44,5 @@
     subtree: true
   });
 
-  console.log('[HideSecret] Extension loaded');
+  console.log('[HideSecret] loaded');
 })();
